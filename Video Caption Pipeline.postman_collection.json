@@ -1,0 +1,2420 @@
+{
+  "info": {
+    "_postman_id": "f3d01511-8a2c-476f-8e3b-aeabc2392061",
+    "name": "Video Caption Pipeline",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "48010427",
+    "_collection_link": "https://go.postman.co/collection/48010427-f3d01511-8a2c-476f-8e3b-aeabc2392061?source=collection_link"
+  },
+  "item": [
+    {
+      "name": "0 - Setup & Auth",
+      "item": [
+        {
+          "name": "POST Auth - Get Session Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status is 200 or 201\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                  "});",
+                  "pm.test(\"Response has token\", function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.have.property(\"token\");",
+                  "    pm.collectionVariables.set(\"authToken\", json.token);",
+                  "    pm.environment.set(\"token\", json.token);",
+                  "});",
+                  "pm.test(\"Token is a non-empty string\", function () {",
+                  "    const token = pm.collectionVariables.get(\"authToken\");",
+                  "    pm.expect(token).to.be.a(\"string\").and.not.empty;",
+                  "});",
+                  "pm.test(\"[BUG HUNT] Token should be unique per session (not static)\", function () {",
+                  "    const token = pm.collectionVariables.get(\"authToken\");",
+                  "    const prevToken = pm.collectionVariables.get(\"prevAuthToken\");",
+                  "    if (prevToken) {",
+                  "        pm.expect(token).to.not.equal(prevToken, \"VULNERABILITY: Static/reused token detected\");",
+                  "    }",
+                  "    pm.collectionVariables.set(\"prevAuthToken\", token);",
+                  "});",
+                  "pm.test(\"Response time is under 3000ms\", function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(3000);",
+                  "});",
+                  "pm.test(\"No internal server error\", function () {",
+                  "    pm.expect(pm.response.code).to.not.equal(500);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    pm.response.json();",
+                  "});",
+                  "",
+                  "pm.test('Status code is 200 or 201', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([",
+                  "        200,",
+                  "        201",
+                  "    ]);",
+                  "})",
+                  "",
+                  "pm.test('Response contains auth token', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.have.property('token');",
+                  "    pm.expect(json.token).to.be.a('string').and.not.empty;",
+                  "    pm.collectionVariables.set('authToken', json.token);",
+                  "})",
+                  "",
+                  "pm.test('Token is different from previous token', function () {",
+                  "    const json = pm.response.json();",
+                  "    const prevToken = pm.collectionVariables.get('prevAuthToken');",
+                  "    if (prevToken) {",
+                  "        pm.expect(json.token).to.not.equal(prevToken);",
+                  "    }",
+                  "    pm.collectionVariables.set('prevAuthToken', json.token);",
+                  "})",
+                  "",
+                  "pm.test('Response time is acceptable', function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(5000);",
+                  "})",
+                  "",
+                  "pm.test('Response is valid JSON', function () {",
+                  "    pm.response.json();",
+                  "})"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Candidate-ID",
+                "value": "{{candidateId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"username\": \"testuser\", \"password\": \"testpassword\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth"
+              ]
+            },
+            "description": "Generated from cURL: curl -X POST \"{{baseUrl}}/api/auth\" -H \"Content-Type: application/json\" -H \"X-Candidate-ID: {{candidateId}}\" -d '{\"username\": \"testuser\", \"password\": \"testpassword\"}'"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "1 - Video CRUD",
+      "item": [
+        {
+          "name": "POST Create Video",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status is 200 or 201\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                  "});",
+                  "pm.test(\"Response has video ID\", function () {",
+                  "    const json = pm.response.json();",
+                  "    const videoId = json.id || json.videoId || json._id;",
+                  "    pm.expect(videoId).to.exist;",
+                  "    pm.collectionVariables.set(\"videoId\", videoId);",
+                  "    pm.environment.set(\"video_id\", videoId);",
+                  "});",
+                  "pm.test(\"Response has title matching request\", function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.have.property(\"title\");",
+                  "});",
+                  "pm.test(\"Response time is under 3000ms\", function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(3000);",
+                  "});",
+                  "pm.test(\"No internal server error\", function () {",
+                  "    pm.expect(pm.response.code).to.not.equal(500);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    pm.response.json();",
+                  "});",
+                  "",
+                  "pm.test('Status code is 200 or 201', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([",
+                  "        200,",
+                  "        201",
+                  "    ]);",
+                  "})",
+                  "",
+                  "pm.test('Response contains video ID', function () {",
+                  "    const json = pm.response.json();",
+                  "    const videoId = json.id || json.videoId || json.video_id;",
+                  "    pm.expect(videoId).to.exist;",
+                  "    pm.collectionVariables.set('videoId', videoId);",
+                  "})",
+                  "",
+                  "pm.test('Video has correct title', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.have.property('title');",
+                  "    pm.expect(json.title).to.be.a('string');",
+                  "})",
+                  "",
+                  "pm.test('Response time is acceptable', function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(5000);",
+                  "})",
+                  "",
+                  "pm.test('Response is valid JSON', function () {",
+                  "    pm.response.json();",
+                  "})"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Candidate-ID",
+                "value": "{{candidateId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"title\": \"Automated Test Video\", \"url\": \"https://example.com/test-video.mp4\", \"description\": \"Created by automated test suite\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/videos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "videos"
+              ]
+            },
+            "description": "Generated from cURL: curl -X POST \"{{baseUrl}}/api/videos\" -H \"Content-Type: application/json\" -H \"X-Candidate-ID: {{candidateId}}\" -H \"Authorization: Bearer {{authToken}}\" -d '{\"title\": \"Automated Test Video\", \"url\": \"https://example.com/test-video.mp4\", \"description\": \"Created by automated test suite\"}'"
+          },
+          "response": []
+        },
+        {
+          "name": "GET List Videos",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status is 200\", function () {",
+                  "    pm.expect(pm.response.code).to.equal(200);",
+                  "});",
+                  "pm.test(\"Response is an array or contains videos array\", function () {",
+                  "    const json = pm.response.json();",
+                  "    const videos = Array.isArray(json) ? json : (json.videos || json.data || json.results);",
+                  "    pm.expect(videos).to.be.an(\"array\");",
+                  "});",
+                  "pm.test(\"Videos have expected structure\", function () {",
+                  "    const json = pm.response.json();",
+                  "    const videos = Array.isArray(json) ? json : (json.videos || json.data || json.results);",
+                  "    if (videos && videos.length > 0) {",
+                  "        videos.forEach(function(video) {",
+                  "            pm.expect(video).to.have.property(\"id\").or.have.property(\"_id\").or.have.property(\"videoId\");",
+                  "        });",
+                  "    }",
+                  "});",
+                  "pm.test(\"Response time is under 3000ms\", function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(3000);",
+                  "});",
+                  "pm.test(\"No internal server error\", function () {",
+                  "    pm.expect(pm.response.code).to.not.equal(500);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    pm.response.json();",
+                  "});",
+                  "",
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "})",
+                  "",
+                  "pm.test('Response is an array or contains videos array', function () {",
+                  "    const json = pm.response.json();",
+                  "    const videos = Array.isArray(json) ? json : json.videos || json.data || json.items;",
+                  "    pm.expect(videos).to.be.an('array');",
+                  "})",
+                  "",
+                  "pm.test('Each video has required properties', function () {",
+                  "    const json = pm.response.json();",
+                  "    const videos = Array.isArray(json) ? json : json.videos || json.data || json.items || [];",
+                  "    videos.forEach(function (video) {",
+                  "        pm.expect(video).to.have.property('id');",
+                  "    });",
+                  "})",
+                  "",
+                  "pm.test('Response time is acceptable', function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(5000);",
+                  "})",
+                  "",
+                  "pm.test('Response is valid JSON', function () {",
+                  "    pm.response.json();",
+                  "})"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Candidate-ID",
+                "value": "{{candidateId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/videos?limit=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "videos"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": "Generated from cURL: curl -X GET \"{{baseUrl}}/api/videos?limit=10\" -H \"X-Candidate-ID: {{candidateId}}\" -H \"Authorization: Bearer {{authToken}}\""
+          },
+          "response": []
+        },
+        {
+          "name": "GET Video By ID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", function () {",
+                  "    pm.expect(pm.response.code).to.equal(200);",
+                  "});",
+                  "pm.test(\"Response contains video data\", function () {",
+                  "    const json = pm.response.json();",
+                  "    const hasId = json.id || json.videoId || json._id;",
+                  "    pm.expect(hasId).to.exist;",
+                  "});",
+                  "pm.test(\"Video ID matches requested ID\", function () {",
+                  "    const json = pm.response.json();",
+                  "    const videoId = pm.collectionVariables.get(\"videoId\") || pm.environment.get(\"video_id\");",
+                  "    const responseId = json.id || json.videoId || json._id;",
+                  "    if (videoId && responseId) {",
+                  "        pm.expect(String(responseId)).to.equal(String(videoId));",
+                  "    }",
+                  "});",
+                  "pm.test(\"Response time is under 3000ms\", function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(3000);",
+                  "});",
+                  "pm.test(\"No internal server error\", function () {",
+                  "    pm.expect(pm.response.code).to.not.equal(500);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    pm.response.json();",
+                  "});",
+                  "",
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "})",
+                  "",
+                  "pm.test('Response contains video data', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.have.property('id');",
+                  "})",
+                  "",
+                  "pm.test('Video ID matches requested ID', function () {",
+                  "    const json = pm.response.json();",
+                  "    const requestedId = pm.collectionVariables.get('videoId');",
+                  "    const responseId = json.id || json.videoId || json.video_id;",
+                  "    if (requestedId) {",
+                  "        pm.expect(String(responseId)).to.equal(String(requestedId));",
+                  "    }",
+                  "})",
+                  "",
+                  "pm.test('Response time is acceptable', function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(5000);",
+                  "})",
+                  "",
+                  "pm.test('Response is valid JSON', function () {",
+                  "    pm.response.json();",
+                  "})"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Candidate-ID",
+                "value": "{{candidateId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/videos/{{videoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "videos",
+                "{{videoId}}"
+              ]
+            },
+            "description": "Generated from cURL: curl -X GET \"{{baseUrl}}/api/videos/{{videoId}}\" -H \"X-Candidate-ID: {{candidateId}}\" -H \"Authorization: Bearer {{authToken}}\""
+          },
+          "response": []
+        },
+        {
+          "name": "[BUG HUNT] GET Video - Invalid ID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"[BUG HUNT] Invalid ID returns 404\", function () {",
+                  "    pm.expect(pm.response.code).to.equal(404, \"BUG: Invalid video ID should return 404\");",
+                  "});",
+                  "pm.test(\"[BUG HUNT] Response contains error message\", function () {",
+                  "    const json = pm.response.json();",
+                  "    const hasError = json.error || json.message || json.detail;",
+                  "    pm.expect(hasError).to.exist;",
+                  "});",
+                  "pm.test(\"[BUG HUNT] No stack trace in response\", function () {",
+                  "    const body = pm.response.text().toLowerCase();",
+                  "    pm.expect(body).to.not.include(\"stack\");",
+                  "    pm.expect(body).to.not.include(\"traceback\");",
+                  "    pm.expect(body).to.not.include(\"exception\");",
+                  "});",
+                  "pm.test(\"No internal server error\", function () {",
+                  "    pm.expect(pm.response.code).to.not.equal(500);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    pm.response.json();",
+                  "});",
+                  "",
+                  "pm.test('[BUG HUNT] Returns 404 for invalid video ID', function () {",
+                  "    pm.expect(pm.response.code).to.equal(404);",
+                  "})",
+                  "",
+                  "pm.test('[BUG HUNT] Response contains error message', function () {",
+                  "    const json = pm.response.json();",
+                  "    const hasError = json.error || json.message || json.detail;",
+                  "    pm.expect(hasError).to.exist;",
+                  "})",
+                  "",
+                  "pm.test('[BUG HUNT] No stack trace exposed', function () {",
+                  "    const responseText = pm.response.text();",
+                  "    pm.expect(responseText).to.not.include('at ');",
+                  "    pm.expect(responseText).to.not.include('Error:');",
+                  "    pm.expect(responseText).to.not.include('Traceback');",
+                  "})",
+                  "",
+                  "pm.test('No internal server error', function () {",
+                  "    pm.expect(pm.response.code).to.not.equal(500);",
+                  "})",
+                  "",
+                  "pm.test('Response is valid JSON', function () {",
+                  "    pm.response.json();",
+                  "})"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Candidate-ID",
+                "value": "{{candidateId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/videos/nonexistent-id-00000",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "videos",
+                "nonexistent-id-00000"
+              ]
+            },
+            "description": "Generated from cURL: curl -X GET \"{{baseUrl}}/api/videos/nonexistent-id-00000\" -H \"X-Candidate-ID: {{candidateId}}\" -H \"Authorization: Bearer {{authToken}}\""
+          },
+          "response": []
+        },
+        {
+          "name": "[BUG HUNT] POST Create Video - Missing Fields",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"[BUG HUNT] Missing fields returns 400 or 422\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([400, 422], \"BUG: Missing required fields should return 400 or 422\");",
+                  "});",
+                  "pm.test(\"[BUG HUNT] Response indicates validation error\", function () {",
+                  "    const json = pm.response.json();",
+                  "    const hasError = json.error || json.message || json.errors || json.detail;",
+                  "    pm.expect(hasError).to.exist;",
+                  "});",
+                  "pm.test(\"[BUG HUNT] No video created with missing fields\", function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.not.have.property(\"id\");",
+                  "    pm.expect(json).to.not.have.property(\"videoId\");",
+                  "});",
+                  "pm.test(\"No internal server error\", function () {",
+                  "    pm.expect(pm.response.code).to.not.equal(500);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    pm.response.json();",
+                  "});",
+                  "",
+                  "pm.test('[BUG HUNT] Returns 400 for missing required fields', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([",
+                  "        400,",
+                  "        422",
+                  "    ]);",
+                  "})",
+                  "",
+                  "pm.test('[BUG HUNT] Response indicates validation error', function () {",
+                  "    const json = pm.response.json();",
+                  "    const hasError = json.error || json.message || json.errors || json.detail;",
+                  "    pm.expect(hasError).to.exist;",
+                  "})",
+                  "",
+                  "pm.test('[BUG HUNT] No video created with missing fields', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.not.have.property('id');",
+                  "})",
+                  "",
+                  "pm.test('No internal server error', function () {",
+                  "    pm.expect(pm.response.code).to.not.equal(500);",
+                  "})",
+                  "",
+                  "pm.test('Response is valid JSON', function () {",
+                  "    pm.response.json();",
+                  "})"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Candidate-ID",
+                "value": "{{candidateId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/videos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "videos"
+              ]
+            },
+            "description": "Generated from cURL: curl -X POST \"{{baseUrl}}/api/videos\" -H \"Content-Type: application/json\" -H \"X-Candidate-ID: {{candidateId}}\" -H \"Authorization: Bearer {{authToken}}\" -d '{}'"
+          },
+          "response": []
+        },
+        {
+          "name": "[BUG HUNT] POST Create Video - No Auth Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"[BUG HUNT] No auth token returns 401 or 403\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([401, 403], \"BUG: Missing auth token should return 401 or 403\");",
+                  "});",
+                  "pm.test(\"[BUG HUNT] Response indicates authentication error\", function () {",
+                  "    const json = pm.response.json();",
+                  "    const hasError = json.error || json.message || json.detail;",
+                  "    pm.expect(hasError).to.exist;",
+                  "});",
+                  "pm.test(\"[BUG HUNT] No video created without auth\", function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.not.have.property(\"id\");",
+                  "    pm.expect(json).to.not.have.property(\"videoId\");",
+                  "});",
+                  "pm.test(\"No internal server error\", function () {",
+                  "    pm.expect(pm.response.code).to.not.equal(500);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    pm.response.json();",
+                  "});",
+                  "",
+                  "pm.test('[BUG HUNT] No auth token returns 401 or 403', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([",
+                  "        401,",
+                  "        403",
+                  "    ]);",
+                  "})",
+                  "",
+                  "pm.test('[BUG HUNT] Response indicates authentication error', function () {",
+                  "    const json = pm.response.json();",
+                  "    const hasError = json.error || json.message || json.detail;",
+                  "    pm.expect(hasError).to.exist;",
+                  "})",
+                  "",
+                  "pm.test('[BUG HUNT] No video created without auth', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.not.have.property('id');",
+                  "    pm.expect(json).to.not.have.property('videoId');",
+                  "})",
+                  "",
+                  "pm.test('No internal server error', function () {",
+                  "    pm.expect(pm.response.code).to.not.equal(500);",
+                  "})",
+                  "",
+                  "pm.test('Response is valid JSON', function () {",
+                  "    pm.response.json();",
+                  "})"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Candidate-ID",
+                "value": "{{candidateId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"title\": \"Unauthorized Video\", \"url\": \"https://example.com/unauth.mp4\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/videos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "videos"
+              ]
+            },
+            "description": "Generated from cURL: curl -X POST \"{{baseUrl}}/api/videos\" -H \"Content-Type: application/json\" -H \"X-Candidate-ID: {{candidateId}}\" -d '{\"title\": \"Unauthorized Video\", \"url\": \"https://example.com/unauth.mp4\"}'"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "2 - Caption Processing",
+      "item": [
+        {
+          "name": "POST Trigger Caption Processing",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200 or 202\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 202]);",
+                  "});",
+                  "pm.test(\"Response indicates processing started\", function () {",
+                  "    const json = pm.response.json();",
+                  "    const hasStatus = json.status || json.message || json.processing;",
+                  "    pm.expect(hasStatus).to.exist;",
+                  "});",
+                  "pm.test(\"Response contains status or job information\", function () {",
+                  "    const json = pm.response.json();",
+                  "    const body = JSON.stringify(json).toLowerCase();",
+                  "    const hasProcessingInfo = body.includes(\"processing\") || body.includes(\"pending\") || body.includes(\"queued\") || body.includes(\"started\") || json.status;",
+                  "    pm.expect(hasProcessingInfo).to.be.true;",
+                  "});",
+                  "pm.test(\"Response time is under 5000ms\", function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(5000);",
+                  "});",
+                  "pm.test(\"No internal server error\", function () {",
+                  "    pm.expect(pm.response.code).to.not.equal(500);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    pm.response.json();",
+                  "});",
+                  "",
+                  "pm.test('Status code is 200 or 202', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([",
+                  "        200,",
+                  "        202",
+                  "    ]);",
+                  "})",
+                  "",
+                  "pm.test('Response indicates processing started', function () {",
+                  "    const json = pm.response.json();",
+                  "    const hasStatus = json.status || json.message || json.processing;",
+                  "    pm.expect(hasStatus).to.exist;",
+                  "})",
+                  "",
+                  "pm.test('Response contains job or task ID if async', function () {",
+                  "    const json = pm.response.json();",
+                  "    if (pm.response.code === 202) {",
+                  "        const hasJobId = json.jobId || json.taskId || json.id;",
+                  "        pm.expect(hasJobId).to.exist;",
+                  "    }",
+                  "})",
+                  "",
+                  "pm.test('Response time is acceptable', function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(10000);",
+                  "})",
+                  "",
+                  "pm.test('Response is valid JSON', function () {",
+                  "    pm.response.json();",
+                  "})"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Candidate-ID",
+                "value": "{{candidateId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/videos/{{videoId}}/process-captions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "videos",
+                "{{videoId}}",
+                "process-captions"
+              ]
+            },
+            "description": "Generated from cURL: curl -X POST \"{{baseUrl}}/api/videos/{{videoId}}/process-captions\" -H \"Content-Type: application/json\" -H \"X-Candidate-ID: {{candidateId}}\" -H \"Authorization: Bearer {{authToken}}\" -d '{}'"
+          },
+          "response": []
+        },
+        {
+          "name": "GET Video Status After Processing",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", function () {",
+                  "    pm.expect(pm.response.code).to.equal(200);",
+                  "});",
+                  "pm.test(\"Response contains video status\", function () {",
+                  "    const json = pm.response.json();",
+                  "    const hasStatus = json.status || json.captionStatus || json.processingStatus;",
+                  "    pm.expect(hasStatus !== undefined).to.be.true;",
+                  "});",
+                  "pm.test(\"Video data is returned\", function () {",
+                  "    const json = pm.response.json();",
+                  "    const hasId = json.id || json.videoId || json._id;",
+                  "    pm.expect(hasId).to.exist;",
+                  "});",
+                  "pm.test(\"Response time is under 3000ms\", function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(3000);",
+                  "});",
+                  "pm.test(\"No internal server error\", function () {",
+                  "    pm.expect(pm.response.code).to.not.equal(500);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    pm.response.json();",
+                  "});",
+                  "",
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "})",
+                  "",
+                  "pm.test('Response contains video status', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.have.property('id');",
+                  "})",
+                  "",
+                  "pm.test('Video has processing status field', function () {",
+                  "    const json = pm.response.json();",
+                  "    const hasStatus = json.status || json.captionStatus || json.processingStatus;",
+                  "    pm.expect(hasStatus).to.exist;",
+                  "})",
+                  "",
+                  "pm.test('Response time is acceptable', function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(5000);",
+                  "})",
+                  "",
+                  "pm.test('Response is valid JSON', function () {",
+                  "    pm.response.json();",
+                  "})"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Candidate-ID",
+                "value": "{{candidateId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/videos/{{videoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "videos",
+                "{{videoId}}"
+              ]
+            },
+            "description": "Generated from cURL: curl -X GET \"{{baseUrl}}/api/videos/{{videoId}}\" -H \"X-Candidate-ID: {{candidateId}}\" -H \"Authorization: Bearer {{authToken}}\""
+          },
+          "response": []
+        },
+        {
+          "name": "[BUG HUNT] POST Double Trigger Captions",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"[BUG HUNT] Double trigger handled gracefully\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 202, 409, 429], \"Should return success, conflict, or rate limit\");",
+                  "});",
+                  "pm.test(\"[BUG HUNT] Response indicates status\", function () {",
+                  "    const json = pm.response.json();",
+                  "    const hasStatus = json.status || json.message || json.error;",
+                  "    pm.expect(hasStatus).to.exist;",
+                  "});",
+                  "pm.test(\"[BUG HUNT] No duplicate processing started\", function () {",
+                  "    const json = pm.response.json();",
+                  "    const body = JSON.stringify(json).toLowerCase();",
+                  "    const isDuplicate = body.includes(\"already\") || body.includes(\"in progress\") || body.includes(\"processing\") || pm.response.code === 409;",
+                  "    pm.expect(isDuplicate || pm.response.code === 200 || pm.response.code === 202).to.be.true;",
+                  "});",
+                  "pm.test(\"No internal server error\", function () {",
+                  "    pm.expect(pm.response.code).to.not.equal(500);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    pm.response.json();",
+                  "});",
+                  "",
+                  "pm.test('[BUG HUNT] Double trigger handled gracefully', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([",
+                  "        200,",
+                  "        202,",
+                  "        409,",
+                  "        429",
+                  "    ]);",
+                  "})",
+                  "",
+                  "pm.test('[BUG HUNT] Response indicates status', function () {",
+                  "    const json = pm.response.json();",
+                  "    const hasMessage = json.message || json.status || json.error;",
+                  "    pm.expect(hasMessage).to.exist;",
+                  "})",
+                  "",
+                  "pm.test('[BUG HUNT] No duplicate processing started', function () {",
+                  "    if (pm.response.code === 409) {",
+                  "        const json = pm.response.json();",
+                  "        pm.expect(json.message || json.error).to.exist;",
+                  "    }",
+                  "})",
+                  "",
+                  "pm.test('No internal server error', function () {",
+                  "    pm.expect(pm.response.code).to.not.equal(500);",
+                  "})",
+                  "",
+                  "pm.test('Response is valid JSON', function () {",
+                  "    pm.response.json();",
+                  "})"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Candidate-ID",
+                "value": "{{candidateId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/videos/{{videoId}}/process-captions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "videos",
+                "{{videoId}}",
+                "process-captions"
+              ]
+            },
+            "description": "Generated from cURL: curl -X POST \"{{baseUrl}}/api/videos/{{videoId}}/process-captions\" -H \"Content-Type: application/json\" -H \"X-Candidate-ID: {{candidateId}}\" -H \"Authorization: Bearer {{authToken}}\" -d '{}'"
+          },
+          "response": []
+        },
+        {
+          "name": "GET Captions for Video",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", function () {",
+                  "    pm.expect(pm.response.code).to.equal(200);",
+                  "});",
+                  "pm.test(\"Response has captions data\", function () {",
+                  "    const json = pm.response.json();",
+                  "    const hasCaptions = json.captions !== undefined || json.data !== undefined || Array.isArray(json);",
+                  "    pm.expect(hasCaptions).to.be.true;",
+                  "});",
+                  "pm.test(\"Response time is under 3000ms\", function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(3000);",
+                  "});",
+                  "pm.test(\"No internal server error\", function () {",
+                  "    pm.expect(pm.response.code).to.not.equal(500);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    pm.response.json();",
+                  "});",
+                  "",
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "})",
+                  "",
+                  "pm.test('Response contains captions data', function () {",
+                  "    const json = pm.response.json();",
+                  "    const captions = json.captions || json.data || json;",
+                  "    pm.expect(captions).to.exist;",
+                  "})",
+                  "",
+                  "pm.test('Captions have required structure', function () {",
+                  "    const json = pm.response.json();",
+                  "    const captions = Array.isArray(json) ? json : json.captions || json.data || [];",
+                  "    if (captions.length > 0) {",
+                  "        captions.forEach(function (caption) {",
+                  "            pm.expect(caption).to.be.an('object');",
+                  "        });",
+                  "    }",
+                  "})",
+                  "",
+                  "pm.test('Response time is acceptable', function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(5000);",
+                  "})",
+                  "",
+                  "pm.test('Response is valid JSON', function () {",
+                  "    pm.response.json();",
+                  "})"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Candidate-ID",
+                "value": "{{candidateId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/captions?videoId={{videoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "captions"
+              ],
+              "query": [
+                {
+                  "key": "videoId",
+                  "value": "{{videoId}}"
+                }
+              ]
+            },
+            "description": "Generated from cURL: curl -X GET \"{{baseUrl}}/api/captions?videoId={{videoId}}\" -H \"X-Candidate-ID: {{candidateId}}\" -H \"Authorization: Bearer {{authToken}}\""
+          },
+          "response": []
+        },
+        {
+          "name": "[BUG HUNT] GET Captions - No Video ID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"[BUG HUNT] No Video ID returns 400\", function () {",
+                  "    pm.expect(pm.response.code).to.equal(400, \"BUG: Missing video ID should return 400\");",
+                  "});",
+                  "pm.test(\"[BUG HUNT] Response indicates missing parameter\", function () {",
+                  "    const json = pm.response.json();",
+                  "    const hasError = json.error || json.message || json.detail;",
+                  "    pm.expect(hasError).to.exist;",
+                  "});",
+                  "pm.test(\"[BUG HUNT] No stack trace exposed\", function () {",
+                  "    const body = pm.response.text();",
+                  "    pm.expect(body).to.not.include(\"at Object.\");",
+                  "    pm.expect(body).to.not.include(\"Traceback\");",
+                  "});",
+                  "pm.test(\"No internal server error\", function () {",
+                  "    pm.expect(pm.response.code).to.not.equal(500);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    pm.response.json();",
+                  "});",
+                  "",
+                  "pm.test('[BUG HUNT] Returns 400 or 404 for missing video ID', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([",
+                  "        400,",
+                  "        404",
+                  "    ]);",
+                  "})",
+                  "",
+                  "pm.test('[BUG HUNT] Response contains error message', function () {",
+                  "    const json = pm.response.json();",
+                  "    const hasError = json.error || json.message || json.detail;",
+                  "    pm.expect(hasError).to.exist;",
+                  "})",
+                  "",
+                  "pm.test('[BUG HUNT] No captions returned without video ID', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.not.have.property('captions');",
+                  "})",
+                  "",
+                  "pm.test('No internal server error', function () {",
+                  "    pm.expect(pm.response.code).to.not.equal(500);",
+                  "})",
+                  "",
+                  "pm.test('Response is valid JSON', function () {",
+                  "    pm.response.json();",
+                  "})"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Candidate-ID",
+                "value": "{{candidateId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/captions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "captions"
+              ]
+            },
+            "description": "Generated from cURL: curl -X GET \"{{baseUrl}}/api/captions\" -H \"X-Candidate-ID: {{candidateId}}\" -H \"Authorization: Bearer {{authToken}}\""
+          },
+          "response": []
+        },
+        {
+          "name": "[BUG HUNT] GET Captions - Invalid Video ID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"[BUG HUNT] Invalid Video ID returns 404 or 400\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([400, 404], \"BUG: Invalid video ID should return 400 or 404\");",
+                  "});",
+                  "pm.test(\"[BUG HUNT] Response indicates video not found\", function () {",
+                  "    const json = pm.response.json();",
+                  "    const hasError = json.error || json.message || json.detail;",
+                  "    pm.expect(hasError).to.exist;",
+                  "});",
+                  "pm.test(\"[BUG HUNT] No stack trace exposed\", function () {",
+                  "    const body = pm.response.text();",
+                  "    pm.expect(body).to.not.include(\"at Object.\");",
+                  "    pm.expect(body).to.not.include(\"Traceback\");",
+                  "});",
+                  "pm.test(\"No internal server error\", function () {",
+                  "    pm.expect(pm.response.code).to.not.equal(500);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    pm.response.json();",
+                  "});",
+                  "",
+                  "pm.test('[BUG HUNT] Returns 404 for invalid video ID', function () {",
+                  "    pm.expect(pm.response.code).to.equal(404);",
+                  "})",
+                  "",
+                  "pm.test('[BUG HUNT] Response contains error message', function () {",
+                  "    const json = pm.response.json();",
+                  "    const hasError = json.error || json.message || json.detail;",
+                  "    pm.expect(hasError).to.exist;",
+                  "})",
+                  "",
+                  "pm.test('[BUG HUNT] No stack trace exposed', function () {",
+                  "    const responseText = pm.response.text();",
+                  "    pm.expect(responseText).to.not.include('at ');",
+                  "    pm.expect(responseText).to.not.include('Traceback');",
+                  "})",
+                  "",
+                  "pm.test('No internal server error', function () {",
+                  "    pm.expect(pm.response.code).to.not.equal(500);",
+                  "})",
+                  "",
+                  "pm.test('Response is valid JSON', function () {",
+                  "    pm.response.json();",
+                  "})"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Candidate-ID",
+                "value": "{{candidateId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/captions?videoId=invalid-id-xyz-99999",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "captions"
+              ],
+              "query": [
+                {
+                  "key": "videoId",
+                  "value": "invalid-id-xyz-99999"
+                }
+              ]
+            },
+            "description": "Generated from cURL: curl -X GET \"{{baseUrl}}/api/captions?videoId=invalid-id-xyz-99999\" -H \"X-Candidate-ID: {{candidateId}}\" -H \"Authorization: Bearer {{authToken}}\""
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "3 - Vulnerability Tests",
+      "item": [
+        {
+          "name": "[BUG HUNT] Auth - SQL Injection",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"[BUG HUNT] SQL Injection returns 400 or 422\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([400, 422, 401], \"BUG: SQL injection payload should be rejected with 400/422\");",
+                  "});",
+                  "pm.test(\"[BUG HUNT] No database error messages exposed\", function () {",
+                  "    const body = pm.response.text().toLowerCase();",
+                  "    pm.expect(body).to.not.include(\"sql\");",
+                  "    pm.expect(body).to.not.include(\"syntax error\");",
+                  "    pm.expect(body).to.not.include(\"mysql\");",
+                  "    pm.expect(body).to.not.include(\"postgresql\");",
+                  "    pm.expect(body).to.not.include(\"sqlite\");",
+                  "    pm.expect(body).to.not.include(\"ora-\");",
+                  "});",
+                  "pm.test(\"[BUG HUNT] No stack trace exposed\", function () {",
+                  "    const body = pm.response.text();",
+                  "    pm.expect(body).to.not.include(\"at Object.\");",
+                  "    pm.expect(body).to.not.include(\"Traceback\");",
+                  "    pm.expect(body).to.not.include(\"Exception\");",
+                  "});",
+                  "pm.test(\"[BUG HUNT] SQL injection did not succeed\", function () {",
+                  "    pm.expect(pm.response.code).to.not.be.oneOf([200, 201], \"CRITICAL: SQL injection may have succeeded!\");",
+                  "});",
+                  "pm.test(\"No internal server error\", function () {",
+                  "    pm.expect(pm.response.code).to.not.equal(500);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    pm.response.json();",
+                  "});",
+                  "",
+                  "pm.test('[BUG HUNT] SQL injection is prevented', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([",
+                  "        400,",
+                  "        401,",
+                  "        403,",
+                  "        404",
+                  "    ]);",
+                  "    pm.expect(pm.response.code).to.not.equal(500);",
+                  "})",
+                  "",
+                  "pm.test('[BUG HUNT] No database error exposed', function () {",
+                  "    const responseText = pm.response.text().toLowerCase();",
+                  "    pm.expect(responseText).to.not.include('sql');",
+                  "    pm.expect(responseText).to.not.include('syntax error');",
+                  "    pm.expect(responseText).to.not.include('mysql');",
+                  "    pm.expect(responseText).to.not.include('postgresql');",
+                  "    pm.expect(responseText).to.not.include('sqlite');",
+                  "})",
+                  "",
+                  "pm.test('[BUG HUNT] No authentication bypass', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.not.have.property('token');",
+                  "})",
+                  "",
+                  "pm.test('No internal server error', function () {",
+                  "    pm.expect(pm.response.code).to.not.equal(500);",
+                  "})",
+                  "",
+                  "pm.test('Response is valid JSON', function () {",
+                  "    pm.response.json();",
+                  "})"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Candidate-ID",
+                "value": "{{candidateId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"username\": \"' OR '1'='1\", \"password\": \"' OR '1'='1\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth"
+              ]
+            },
+            "description": "Generated from cURL: curl -X POST \"{{baseUrl}}/api/auth\" -H \"Content-Type: application/json\" -H \"X-Candidate-ID: {{candidateId}}\" -d \"{\\\"username\\\": \\\"' OR '1'='1\\\", \\\"password\\\": \\\"' OR '1'='1\\\"}\""
+          },
+          "response": []
+        },
+        {
+          "name": "[BUG HUNT] Auth - Empty Credentials",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"[BUG HUNT] Empty credentials returns 400 or 401\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([400, 401], \"BUG: Empty credentials should return 400 or 401\");",
+                  "});",
+                  "pm.test(\"[BUG HUNT] Response indicates validation error\", function () {",
+                  "    const json = pm.response.json();",
+                  "    const hasError = json.error || json.message || json.detail;",
+                  "    pm.expect(hasError).to.exist;",
+                  "});",
+                  "pm.test(\"[BUG HUNT] No token returned for empty credentials\", function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.not.have.property(\"token\");",
+                  "});",
+                  "pm.test(\"No internal server error\", function () {",
+                  "    pm.expect(pm.response.code).to.not.equal(500);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    pm.response.json();",
+                  "});",
+                  "",
+                  "pm.test('[BUG HUNT] Empty credentials returns 400 or 401', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([",
+                  "        400,",
+                  "        401",
+                  "    ]);",
+                  "})",
+                  "",
+                  "pm.test('[BUG HUNT] Response indicates validation error', function () {",
+                  "    const json = pm.response.json();",
+                  "    const hasError = json.error || json.message || json.detail;",
+                  "    pm.expect(hasError).to.exist;",
+                  "})",
+                  "",
+                  "pm.test('[BUG HUNT] No token issued for empty credentials', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.not.have.property('token');",
+                  "})",
+                  "",
+                  "pm.test('No internal server error', function () {",
+                  "    pm.expect(pm.response.code).to.not.equal(500);",
+                  "})",
+                  "",
+                  "pm.test('Response is valid JSON', function () {",
+                  "    pm.response.json();",
+                  "})"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Candidate-ID",
+                "value": "{{candidateId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"username\": \"\", \"password\": \"\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth"
+              ]
+            },
+            "description": "Generated from cURL: curl -X POST \"{{baseUrl}}/api/auth\" -H \"Content-Type: application/json\" -H \"X-Candidate-ID: {{candidateId}}\" -d '{\"username\": \"\", \"password\": \"\"}'"
+          },
+          "response": []
+        },
+        {
+          "name": "[BUG HUNT] Auth - Missing Candidate ID Header",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"[BUG HUNT] Missing Candidate ID Header returns 400 or 401\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([400, 401], \"BUG: Missing required header should return 400 or 401\");",
+                  "});",
+                  "pm.test(\"[BUG HUNT] Response indicates missing header\", function () {",
+                  "    const json = pm.response.json();",
+                  "    const hasError = json.error || json.message || json.detail;",
+                  "    pm.expect(hasError).to.exist;",
+                  "});",
+                  "pm.test(\"[BUG HUNT] No token returned without proper headers\", function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.not.have.property(\"token\");",
+                  "});",
+                  "pm.test(\"No internal server error\", function () {",
+                  "    pm.expect(pm.response.code).to.not.equal(500);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    pm.response.json();",
+                  "});",
+                  "",
+                  "pm.test('[BUG HUNT] Missing Candidate ID returns 400 or 401', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([",
+                  "        400,",
+                  "        401,",
+                  "        403",
+                  "    ]);",
+                  "})",
+                  "",
+                  "pm.test('[BUG HUNT] Response indicates missing header', function () {",
+                  "    const json = pm.response.json();",
+                  "    const hasError = json.error || json.message || json.detail;",
+                  "    pm.expect(hasError).to.exist;",
+                  "})",
+                  "",
+                  "pm.test('[BUG HUNT] No token issued without Candidate ID', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.not.have.property('token');",
+                  "})",
+                  "",
+                  "pm.test('No internal server error', function () {",
+                  "    pm.expect(pm.response.code).to.not.equal(500);",
+                  "})",
+                  "",
+                  "pm.test('Response is valid JSON', function () {",
+                  "    pm.response.json();",
+                  "})"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"username\": \"testuser\", \"password\": \"testpassword\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth"
+              ]
+            },
+            "description": "Generated from cURL: curl -X POST \"{{baseUrl}}/api/auth\" -H \"Content-Type: application/json\" -d '{\"username\": \"testuser\", \"password\": \"testpassword\"}'"
+          },
+          "response": []
+        },
+        {
+          "name": "[BUG HUNT] IDOR - Access Another User's Video",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"[BUG HUNT] IDOR - Access denied returns 403 or 404\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([403, 404], \"CRITICAL BUG: IDOR vulnerability - should not return 200 for another user's video\");",
+                  "});",
+                  "pm.test(\"[BUG HUNT] No data from another user leaked\", function () {",
+                  "    if (pm.response.code === 200) {",
+                  "        console.error(\"CRITICAL: IDOR vulnerability detected - able to access another user's video!\");",
+                  "    }",
+                  "    pm.expect(pm.response.code).to.not.equal(200);",
+                  "});",
+                  "pm.test(\"[BUG HUNT] Response does not contain video data\", function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.not.have.property(\"title\");",
+                  "    pm.expect(json).to.not.have.property(\"captions\");",
+                  "});",
+                  "pm.test(\"No internal server error\", function () {",
+                  "    pm.expect(pm.response.code).to.not.equal(500);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    pm.response.json();",
+                  "});",
+                  "",
+                  "pm.test('[BUG HUNT] IDOR prevented - returns 403 or 404', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([",
+                  "        403,",
+                  "        404",
+                  "    ]);",
+                  "})",
+                  "",
+                  "pm.test('[BUG HUNT] Cannot access another user\\'s video', function () {",
+                  "    const json = pm.response.json();",
+                  "    const hasError = json.error || json.message || json.detail;",
+                  "    pm.expect(hasError).to.exist;",
+                  "})",
+                  "",
+                  "pm.test('[BUG HUNT] No video data leaked', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.not.have.property('title');",
+                  "    pm.expect(json).to.not.have.property('url');",
+                  "})",
+                  "",
+                  "pm.test('No internal server error', function () {",
+                  "    pm.expect(pm.response.code).to.not.equal(500);",
+                  "})",
+                  "",
+                  "pm.test('Response is valid JSON', function () {",
+                  "    pm.response.json();",
+                  "})"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Candidate-ID",
+                "value": "{{candidateId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/videos/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "videos",
+                "1"
+              ]
+            },
+            "description": "Generated from cURL: curl -X GET \"{{baseUrl}}/api/videos/1\" -H \"X-Candidate-ID: {{candidateId}}\" -H \"Authorization: Bearer {{authToken}}\""
+          },
+          "response": []
+        },
+        {
+          "name": "[BUG HUNT] Rate Limiting - Brute Force Auth",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"[BUG HUNT] Rate limiting check\", function () {",
+                  "    if (pm.response.code === 429) {",
+                  "        pm.expect(pm.response.code).to.equal(429);",
+                  "        console.log(\"Rate limiting is working correctly\");",
+                  "    } else {",
+                  "        console.warn(\"WARNING: Rate limiting may not be implemented - received \" + pm.response.code + \" instead of 429\");",
+                  "        pm.expect(pm.response.code).to.be.oneOf([200, 201, 401, 429], \"Response should be valid\");",
+                  "    }",
+                  "});",
+                  "pm.test(\"[BUG HUNT] Check for rate limit headers\", function () {",
+                  "    const headers = pm.response.headers;",
+                  "    const hasRateLimitHeader = headers.has(\"X-RateLimit-Limit\") || ",
+                  "                               headers.has(\"X-RateLimit-Remaining\") || ",
+                  "                               headers.has(\"Retry-After\") ||",
+                  "                               headers.has(\"RateLimit-Limit\");",
+                  "    if (!hasRateLimitHeader && pm.response.code !== 429) {",
+                  "        console.warn(\"WARNING: No rate limit headers found - rate limiting may not be implemented\");",
+                  "    }",
+                  "});",
+                  "pm.test(\"[BUG HUNT] Brute force protection assessment\", function () {",
+                  "    if (pm.response.code !== 429) {",
+                  "        console.warn(\"POTENTIAL BUG: No rate limiting detected after multiple auth attempts - brute force vulnerability possible\");",
+                  "    }",
+                  "});",
+                  "pm.test(\"No internal server error\", function () {",
+                  "    pm.expect(pm.response.code).to.not.equal(500);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    pm.response.json();",
+                  "});",
+                  "",
+                  "pm.test('[BUG HUNT] Rate limiting is enforced', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([",
+                  "        401,",
+                  "        429",
+                  "    ]);",
+                  "})",
+                  "",
+                  "pm.test('[BUG HUNT] Response indicates rate limit or auth failure', function () {",
+                  "    const json = pm.response.json();",
+                  "    const hasMessage = json.error || json.message || json.detail;",
+                  "    pm.expect(hasMessage).to.exist;",
+                  "})",
+                  "",
+                  "pm.test('[BUG HUNT] No token issued during brute force', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.not.have.property('token');",
+                  "})",
+                  "",
+                  "pm.test('No internal server error', function () {",
+                  "    pm.expect(pm.response.code).to.not.equal(500);",
+                  "})",
+                  "",
+                  "pm.test('Response is valid JSON', function () {",
+                  "    pm.response.json();",
+                  "})"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Candidate-ID",
+                "value": "{{candidateId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"username\": \"bruteforce\", \"password\": \"wrong_password_1\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth"
+              ]
+            },
+            "description": "Generated from cURL: curl -X POST \"{{baseUrl}}/api/auth\" -H \"Content-Type: application/json\" -H \"X-Candidate-ID: {{candidateId}}\" -d '{\"username\": \"bruteforce\", \"password\": \"wrong_password_1\"}'"
+          },
+          "response": []
+        },
+        {
+          "name": "[BUG HUNT] XSS - Script Tag in Video Title",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"[BUG HUNT] XSS payload is rejected or sanitized\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 400, 422], \"XSS test should return 200 (sanitized), 400, or 422\");",
+                  "});",
+                  "pm.test(\"[BUG HUNT] XSS payload is escaped in response\", function () {",
+                  "    const body = pm.response.text();",
+                  "    pm.expect(body).to.not.include(\"<script>\");",
+                  "    pm.expect(body).to.not.include(\"</script>\");",
+                  "    pm.expect(body).to.not.include(\"javascript:\");",
+                  "    pm.expect(body).to.not.include(\"onerror=\");",
+                  "});",
+                  "pm.test(\"[BUG HUNT] Store XSS video ID for cleanup\", function () {",
+                  "    if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "        const json = pm.response.json();",
+                  "        const videoId = json.id || json.videoId || json._id;",
+                  "        if (videoId) {",
+                  "            pm.collectionVariables.set(\"xssVideoId\", videoId);",
+                  "            console.log(\"XSS test video created with ID: \" + videoId);",
+                  "        }",
+                  "    }",
+                  "});",
+                  "pm.test(\"No internal server error\", function () {",
+                  "    pm.expect(pm.response.code).to.not.equal(500);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    pm.response.json();",
+                  "});",
+                  "",
+                  "pm.test('[BUG HUNT] XSS payload is sanitized or rejected', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([",
+                  "        200,",
+                  "        201,",
+                  "        400",
+                  "    ]);",
+                  "})",
+                  "",
+                  "pm.test('[BUG HUNT] Script tags not reflected in response', function () {",
+                  "    const responseText = pm.response.text();",
+                  "    pm.expect(responseText).to.not.include('<script>alert');",
+                  "})",
+                  "",
+                  "pm.test('[BUG HUNT] Title is sanitized if video created', function () {",
+                  "    if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "        const json = pm.response.json();",
+                  "        if (json.title) {",
+                  "            pm.expect(json.title).to.not.include('<script>');",
+                  "        }",
+                  "        if (json.id) {",
+                  "            pm.collectionVariables.set('xssVideoId', json.id);",
+                  "        }",
+                  "    }",
+                  "})",
+                  "",
+                  "pm.test('No internal server error', function () {",
+                  "    pm.expect(pm.response.code).to.not.equal(500);",
+                  "})",
+                  "",
+                  "pm.test('Response is valid JSON', function () {",
+                  "    pm.response.json();",
+                  "})"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Candidate-ID",
+                "value": "{{candidateId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"title\": \"<script>alert('XSS')</script>\", \"url\": \"https://example.com/xss-test.mp4\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/videos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "videos"
+              ]
+            },
+            "description": "Generated from cURL: curl -X POST \"{{baseUrl}}/api/videos\" -H \"Content-Type: application/json\" -H \"X-Candidate-ID: {{candidateId}}\" -H \"Authorization: Bearer {{authToken}}\" -d \"{\\\"title\\\": \\\"<script>alert('XSS')</script>\\\", \\\"url\\\": \\\"https://example.com/xss-test.mp4\\\"}\""
+          },
+          "response": []
+        },
+        {
+          "name": "[BUG HUNT] Oversized Payload",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"[BUG HUNT] Oversized payload returns 400 or 413\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([400, 413], \"BUG: Oversized payload should return 400 or 413, not 500\");",
+                  "});",
+                  "pm.test(\"[BUG HUNT] Server handles large payload gracefully\", function () {",
+                  "    pm.expect(pm.response.code).to.not.equal(500, \"CRITICAL: Server crashed on oversized payload\");",
+                  "});",
+                  "pm.test(\"[BUG HUNT] Response indicates payload too large\", function () {",
+                  "    const json = pm.response.json();",
+                  "    const body = JSON.stringify(json).toLowerCase();",
+                  "    const hasError = body.includes(\"large\") || body.includes(\"size\") || body.includes(\"limit\") || body.includes(\"too big\") || json.error || json.message;",
+                  "    pm.expect(hasError).to.be.true;",
+                  "});",
+                  "pm.test(\"No internal server error\", function () {",
+                  "    pm.expect(pm.response.code).to.not.equal(500);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    pm.response.json();",
+                  "});",
+                  "",
+                  "pm.test('[BUG HUNT] Oversized payload handled gracefully', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([",
+                  "        400,",
+                  "        413,",
+                  "        422",
+                  "    ]);",
+                  "})",
+                  "",
+                  "pm.test('[BUG HUNT] Response indicates payload too large', function () {",
+                  "    const json = pm.response.json();",
+                  "    const hasError = json.error || json.message || json.detail;",
+                  "    pm.expect(hasError).to.exist;",
+                  "})",
+                  "",
+                  "pm.test('[BUG HUNT] No video created with oversized payload', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.not.have.property('id');",
+                  "})",
+                  "",
+                  "pm.test('No internal server error', function () {",
+                  "    pm.expect(pm.response.code).to.not.equal(500);",
+                  "})",
+                  "",
+                  "pm.test('Response is valid JSON', function () {",
+                  "    pm.response.json();",
+                  "})"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Candidate-ID",
+                "value": "{{candidateId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"title\": \"Normal Title\", \"url\": \"https://example.com/video.mp4\", \"description\": \"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/videos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "videos"
+              ]
+            },
+            "description": "Generated from cURL: curl -X POST \"{{baseUrl}}/api/videos\" -H \"Content-Type: application/json\" -H \"X-Candidate-ID: {{candidateId}}\" -H \"Authorization: Bearer {{authToken}}\" -d '{\"title\": \"Normal Title\", \"url\": \"https://example.com/video.mp4\", \"description\": \"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\"}'"
+          },
+          "response": []
+        },
+        {
+          "name": "[BUG HUNT] Process Captions - Non-existent Video",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"[BUG HUNT] Processing captions for non-existent video should return 404\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([404, 400]);",
+                  "});",
+                  "",
+                  "pm.test('[BUG HUNT] Returns 404 for non-existent video', function () {",
+                  "    pm.expect(pm.response.code).to.equal(404);",
+                  "})",
+                  "",
+                  "pm.test('[BUG HUNT] Response contains error message', function () {",
+                  "    const json = pm.response.json();",
+                  "    const hasError = json.error || json.message || json.detail;",
+                  "    pm.expect(hasError).to.exist;",
+                  "})",
+                  "",
+                  "pm.test('[BUG HUNT] No processing started for invalid video', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.not.have.property('jobId');",
+                  "    pm.expect(json).to.not.have.property('taskId');",
+                  "})",
+                  "",
+                  "pm.test('No internal server error', function () {",
+                  "    pm.expect(pm.response.code).to.not.equal(500);",
+                  "})",
+                  "",
+                  "pm.test('Response is valid JSON', function () {",
+                  "    pm.response.json();",
+                  "})"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Candidate-ID",
+                "value": "{{candidateId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/videos/nonexistent-video-id-99999/process-captions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "videos",
+                "nonexistent-video-id-99999",
+                "process-captions"
+              ]
+            },
+            "description": "Generated from cURL: curl -X POST \"{{baseUrl}}/api/videos/nonexistent-video-id-99999/process-captions\" -H \"Content-Type: application/json\" -H \"X-Candidate-ID: {{candidateId}}\" -H \"Authorization: Bearer {{authToken}}\" -d '{}'"
+          },
+          "response": []
+        },
+        {
+          "name": "[BUG HUNT] DELETE Video - No Auth",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"[BUG HUNT] DELETE without auth token should return 401 or 403\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([401, 403]);",
+                  "});",
+                  "",
+                  "pm.test('[BUG HUNT] DELETE without auth returns 401 or 403', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([",
+                  "        401,",
+                  "        403",
+                  "    ]);",
+                  "})",
+                  "",
+                  "pm.test('[BUG HUNT] Response indicates authentication required', function () {",
+                  "    const json = pm.response.json();",
+                  "    const hasError = json.error || json.message || json.detail;",
+                  "    pm.expect(hasError).to.exist;",
+                  "})",
+                  "",
+                  "pm.test('[BUG HUNT] Video not deleted without auth', function () {",
+                  "    pm.expect(pm.response.code).to.not.equal(200);",
+                  "    pm.expect(pm.response.code).to.not.equal(204);",
+                  "})",
+                  "",
+                  "pm.test('No internal server error', function () {",
+                  "    pm.expect(pm.response.code).to.not.equal(500);",
+                  "})",
+                  "",
+                  "pm.test('Response is valid JSON', function () {",
+                  "    pm.response.json();",
+                  "})"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "X-Candidate-ID",
+                "value": "{{candidateId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/videos/{{videoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "videos",
+                "{{videoId}}"
+              ]
+            },
+            "description": "Generated from cURL: curl -X DELETE \"{{baseUrl}}/api/videos/{{videoId}}\" -H \"X-Candidate-ID: {{candidateId}}\""
+          },
+          "response": []
+        },
+        {
+          "name": "[BUG HUNT] IDOR - Delete Another User's Video",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"[BUG HUNT] Deleting another user's video should return 403 or 404\", function () {",
+                  "    if (pm.response.code === 200 || pm.response.code === 204) {",
+                  "        console.log(\"CRITICAL VULNERABILITY: IDOR on DELETE - able to delete video ID=1 which may belong to another user\");",
+                  "    }",
+                  "    pm.expect(pm.response.code).to.be.oneOf([403, 404]);",
+                  "});",
+                  "",
+                  "pm.test('[BUG HUNT] IDOR prevented - cannot delete another user\\'s video', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([",
+                  "        403,",
+                  "        404",
+                  "    ]);",
+                  "})",
+                  "",
+                  "pm.test('[BUG HUNT] Response indicates access denied', function () {",
+                  "    const json = pm.response.json();",
+                  "    const hasError = json.error || json.message || json.detail;",
+                  "    pm.expect(hasError).to.exist;",
+                  "})",
+                  "",
+                  "pm.test('[BUG HUNT] Video not deleted', function () {",
+                  "    pm.expect(pm.response.code).to.not.equal(200);",
+                  "    pm.expect(pm.response.code).to.not.equal(204);",
+                  "})",
+                  "",
+                  "pm.test('No internal server error', function () {",
+                  "    pm.expect(pm.response.code).to.not.equal(500);",
+                  "})",
+                  "",
+                  "pm.test('Response is valid JSON', function () {",
+                  "    pm.response.json();",
+                  "})"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "X-Candidate-ID",
+                "value": "{{candidateId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/videos/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "videos",
+                "1"
+              ]
+            },
+            "description": "Generated from cURL: curl -X DELETE \"{{baseUrl}}/api/videos/1\" -H \"X-Candidate-ID: {{candidateId}}\" -H \"Authorization: Bearer {{authToken}}\""
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "4 - Teardown",
+      "item": [
+        {
+          "name": "DELETE XSS Test Video (if created)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const xssId = pm.collectionVariables.get(\"xssVideoId\");",
+                  "if (!xssId) {",
+                  "    pm.execution.skipRequest();",
+                  "}"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"XSS test video deleted or not found\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 204, 404]);",
+                  "});",
+                  "",
+                  "pm.test('XSS test video deletion handled', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([",
+                  "        200,",
+                  "        204,",
+                  "        404",
+                  "    ]);",
+                  "})",
+                  "",
+                  "pm.test('Response indicates deletion status', function () {",
+                  "    if (pm.response.code !== 204) {",
+                  "        const json = pm.response.json();",
+                  "        const hasMessage = json.message || json.deleted || json.error;",
+                  "        pm.expect(hasMessage !== undefined || pm.response.code === 204).to.be.true;",
+                  "    }",
+                  "})",
+                  "",
+                  "pm.test('No internal server error', function () {",
+                  "    pm.expect(pm.response.code).to.not.equal(500);",
+                  "})",
+                  "",
+                  "pm.test('Response time is acceptable', function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(5000);",
+                  "})"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "X-Candidate-ID",
+                "value": "{{candidateId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/videos/{{xssVideoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "videos",
+                "{{xssVideoId}}"
+              ]
+            },
+            "description": "Generated from cURL: curl -X DELETE \"{{baseUrl}}/api/videos/{{xssVideoId}}\" -H \"X-Candidate-ID: {{candidateId}}\" -H \"Authorization: Bearer {{authToken}}\""
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE Main Test Video",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200, 204, or 404\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 204, 404]);",
+                  "});",
+                  "pm.test(\"Video deletion logged\", function () {",
+                  "    console.log(\"DELETE video \" + pm.collectionVariables.get(\"videoId\") + \" returned: \" + pm.response.code);",
+                  "    pm.expect(true).to.be.true;",
+                  "});",
+                  "",
+                  "pm.test('Main test video deleted successfully', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([",
+                  "        200,",
+                  "        204",
+                  "    ]);",
+                  "})",
+                  "",
+                  "pm.test('Response confirms deletion', function () {",
+                  "    if (pm.response.code !== 204) {",
+                  "        const json = pm.response.json();",
+                  "        const hasConfirmation = json.message || json.deleted || json.success;",
+                  "        pm.expect(hasConfirmation).to.exist;",
+                  "    }",
+                  "})",
+                  "",
+                  "pm.test('No internal server error', function () {",
+                  "    pm.expect(pm.response.code).to.not.equal(500);",
+                  "})",
+                  "",
+                  "pm.test('Response time is acceptable', function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(5000);",
+                  "})"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "X-Candidate-ID",
+                "value": "{{candidateId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/videos/{{videoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "videos",
+                "{{videoId}}"
+              ]
+            },
+            "description": "Generated from cURL: curl -X DELETE \"{{baseUrl}}/api/videos/{{videoId}}\" -H \"X-Candidate-ID: {{candidateId}}\" -H \"Authorization: Bearer {{authToken}}\""
+          },
+          "response": []
+        },
+        {
+          "name": "GET Verify Video Deleted",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Deleted video returns 404', function () {",
+                  "    pm.expect(pm.response.code).to.equal(404);",
+                  "})",
+                  "",
+                  "pm.test('Response indicates video not found', function () {",
+                  "    const json = pm.response.json();",
+                  "    const hasError = json.error || json.message || json.detail;",
+                  "    pm.expect(hasError).to.exist;",
+                  "})",
+                  "",
+                  "pm.test('No video data returned', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.not.have.property('title');",
+                  "    pm.expect(json).to.not.have.property('url');",
+                  "})",
+                  "",
+                  "pm.test('No internal server error', function () {",
+                  "    pm.expect(pm.response.code).to.not.equal(500);",
+                  "})",
+                  "",
+                  "pm.test('Response is valid JSON', function () {",
+                  "    pm.response.json();",
+                  "})"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Candidate-ID",
+                "value": "{{candidateId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/videos/{{videoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "videos",
+                "{{videoId}}"
+              ]
+            },
+            "description": "Generated from cURL: curl -X GET \"{{baseUrl}}/api/videos/{{videoId}}\" -H \"X-Candidate-ID: {{candidateId}}\" -H \"Authorization: Bearer {{authToken}}\""
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Ensure X-Candidate-ID is always set on every request",
+          "pm.request.headers.add({",
+          "    key: \"X-Candidate-ID\",",
+          "    value: pm.collectionVariables.get(\"candidateId\") || \"48010427\"",
+          "});"
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "packages": {},
+        "requests": {},
+        "exec": [
+          ""
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "X-Candidate-ID",
+      "value": ""
+    },
+    {
+      "key": "authToken",
+      "value": ""
+    },
+    {
+      "key": "prevAuthToken",
+      "value": ""
+    },
+    {
+      "key": "videoId",
+      "value": ""
+    },
+    {
+      "key": "xssVideoId",
+      "value": ""
+    },
+    {
+      "key": "candidateId",
+      "value": ""
+    }
+  ]
+}
