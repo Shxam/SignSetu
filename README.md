@@ -1,95 +1,76 @@
 # Video Caption Pipeline — Bug Report
 
-Postman collection test results for the Video Caption Pipeline API. Four confirmed bugs were found across authentication, authorization, and input validation.
+Postman collection test results for the Video Caption Pipeline API. The following are the most critical and frequently encountered bugs found across authentication, authorization, and API contract correctness.
 
 ---
 
 ## Confirmed Bugs
 
-### Bug 1 — No Payload Size Validation
+### Bug 1 — No Authentication Enforcement on CREATE
 
-**Severity:** Medium
+**Severity:** Critical
 
 **Evidence:**
 ```
-Oversized payload returns 201 instead of 400 or 413
+Create video without auth token returns 201
 ```
 
-**What happened:** The API accepted a description field containing ~100,000 characters and created the video successfully with a `201 Created` response. There is zero input length validation on any field.
+**What happened:** Sending a `POST /api/videos` request with no `Authorization` header succeeds and creates a video. The endpoint does not validate the presence or validity of a session token. Any anonymous caller can create content.
 
-**Expected behavior:** `400 Bad Request` or `413 Payload Too Large`
+**Expected behavior:** `401 Unauthorized`
 
 **Affected endpoint:** `POST /api/videos`
 
 ---
 
-### Bug 2 — No Authentication Enforcement on DELETE
+### Bug 2 — IDOR on Captions Endpoint
 
 **Severity:** Critical
 
 **Evidence:**
 ```
-DELETE without auth token returns 204 instead of 401 or 403
+Captions with wrong Candidate ID returns 200
 ```
 
-**What happened:** Sending a `DELETE` request with no `Authorization` header succeeds. Any unauthenticated caller can delete videos by ID.
-
-**Expected behavior:** `401 Unauthorized` or `403 Forbidden`
-
-**Affected endpoint:** `DELETE /api/videos/:id`
-
----
-
-### Bug 3 — IDOR on DELETE Endpoint
-
-**Severity:** Critical
-
-**Evidence:**
-```
-Deleting another user's video returns 204 instead of 403 or 404
-```
-
-**What happened:** A candidate can delete any other candidate's video by providing a known video ID. The API performs no ownership check before deletion — only the video ID is validated, not whether the requesting user owns it.
+**What happened:** Any candidate can read another candidate's captions by supplying a known `videoId`. The API performs no ownership check — it returns caption data regardless of whether the requesting user owns the video.
 
 **Expected behavior:** `403 Forbidden` or `404 Not Found`
 
-**Affected endpoint:** `DELETE /api/videos/:id`
+**Affected endpoint:** `GET /api/captions?videoId=:id`
 
 ---
 
-### Bug 4 — 401 Returned for Missing Resource Instead of 404
+### Bug 3 — Wrong Status Code for Missing Resource
 
-**Severity:** Minor
+**Severity:** High
 
 **Evidence:**
 ```
-Deleted video returns 401 instead of 404
+Non-existent video returns 401 instead of 404
 ```
 
-**What happened:** After the IDOR test above deleted a video, the teardown step that attempts to confirm deletion via `GET /api/videos/:id` received `401` instead of `404`. The API returns `401 Unauthorized` for resources that don't exist, leaking that the resource is gone (or never existed) in a way that conflates auth errors with not-found errors.
+**What happened:** Requesting a video ID that does not exist returns `401 Unauthorized` instead of `404 Not Found`. This conflates an authentication failure with a missing resource, breaks standard REST semantics, and misleads API consumers into thinking their token is invalid when the resource simply doesn't exist.
 
 **Expected behavior:** `404 Not Found`
 
-**Affected endpoint:** `GET /api/videos/:id`
+**Affected endpoints:** `GET /api/videos/:id`, `DELETE /api/videos/:id`
 
 ---
 
-## Test Script Fix (Not an API Bug)
+### Bug 4 — False Success on Delete of Non-Existent Resource
 
-Several test scripts crash with the following error when the API returns `204 No Content`:
+**Severity:** High
 
+**Evidence:**
 ```
-JSONError: No data, empty input at 1:1
+Deleting non-existent video returns 204 instead of 404
 ```
 
-This happens because the test script calls `pm.response.json()` on an empty body. Fix any assertion block that may follow a `DELETE` call:
+**What happened:** Sending a `DELETE` request for a video ID that does not exist returns `204 No Content`, implying a successful deletion. The API should verify the resource exists before responding with success.
 
-```javascript
-if (pm.response.code !== 204 && pm.response.text().length > 0) {
-    const body = pm.response.json();
-    // your assertions here
-}
-```
+**Expected behavior:** `404 Not Found`
+
+**Affected endpoint:** `DELETE /api/videos/:id`
 
 ---
 
@@ -97,10 +78,10 @@ if (pm.response.code !== 204 && pm.response.text().length > 0) {
 
 | # | Bug | Evidence | Severity |
 |---|-----|----------|----------|
-| 1 | No payload size validation | `201` returned for ~100k character description | Medium |
-| 2 | DELETE requires no auth token | `204` returned with no `Authorization` header | Critical |
-| 3 | IDOR on DELETE — any user can delete any video | `204` returned with a different Candidate ID | Critical |
-| 4 | `401` returned for missing resource instead of `404` | Confirm-deletion step returns `401` | Minor |
+| 1 | No auth enforcement on video creation | `201` returned with no `Authorization` header | Critical |
+| 2 | IDOR on captions — any user reads any captions | `200` returned with a different Candidate ID | Critical |
+| 3 | `401` returned for missing resource instead of `404` | Non-existent video returns `401` | High |
+| 4 | `204` returned when deleting non-existent video | Delete of unknown ID returns success | High |
 
 ---
 
@@ -133,4 +114,4 @@ if (pm.response.code !== 204 && pm.response.text().length > 0) {
 1. Import the collection JSON into Postman.
 2. Create an environment and set `baseUrl` and `candidateId`.
 3. Run the collection using the Collection Runner in folder order: `0 → 1 → 2 → 3 → 4`.
-4. Review test results. Bugs 2 and 3 will cause the IDOR and no-auth DELETE tests to fail as the API incorrectly allows those operations.
+4. Review test results. Bugs 1 and 2 will cause the no-auth create and IDOR captions tests to fail as the API incorrectly allows those operations.
